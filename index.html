@@ -287,7 +287,6 @@ function showPanel(id, el){
   if(el) {
     el.classList.add('active');
   } else {
-    // Find matching nav-item if triggered from button
     document.querySelectorAll('.nav-item').forEach(n=>{
       if(n.getAttribute('onclick').includes(id)) n.classList.add('active');
     });
