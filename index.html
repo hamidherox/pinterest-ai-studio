@@ -87,7 +87,7 @@ th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);co
 <header class="topbar">
   <div class="topbar-logo">Pin<span>Forge</span></div>
   <span class="badge badge-red">Auto</span>
-  <span class="badge badge-green">v3.0 Framework Core</span>
+  <span class="badge badge-green">v3.1 Production Engine</span>
 </header>
 
 <nav class="sidebar">
@@ -104,7 +104,7 @@ th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);co
   <div id="panel-generator" class="panel active">
     <div class="page-header">
       <div class="page-title">Pinterest Hub</div>
-      <div class="page-subtitle">Auto-generate luxury layout composites & articles with flexible free models.</div>
+      <div class="page-subtitle">Auto-generate luxury layout composites & articles via Placid 2.0 API Node.</div>
     </div>
     
     <div class="stats-row">
@@ -239,12 +239,12 @@ th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);co
           <input type="password" id="cfg-hf-token" placeholder="hf_xxxxxxxxxxxxxxxx" oninput="saveConfig()"/>
         </div>
         <div class="form-group">
-          <label>Placid Private API Token (placeid.app Key)</label>
-          <input type="password" id="cfg-placid-token" placeholder="Bearer private_xxxxxxxx" oninput="saveConfig()"/>
+          <label>Placid Private API Token (placid.app Key)</label>
+          <input type="password" id="cfg-placid-token" placeholder="Bearer placid-..." oninput="saveConfig()"/>
         </div>
         <div class="form-group">
           <label>Placid Template UID</label>
-          <input type="text" id="cfg-placid-uuid" placeholder="e.g., t_n9m2v..." oninput="saveConfig()"/>
+          <input type="text" id="cfg-placid-uuid" placeholder="e.g., vb9j5mr3d1pie" oninput="saveConfig()"/>
         </div>
         <div class="form-group" style="justify-content: flex-end; grid-column: 1/-1;">
           <button class="btn btn-outline" style="height:38px; margin-right:10px;" onclick="testAIConnection()">🔍 Test AI Connection</button>
@@ -435,15 +435,20 @@ async function testPlacidConnection() {
   if (!token || !uuid) { alert("❌ Credentials Empty"); return; }
   log(`[DEBUG] Testing Placid API Handshake...`, 'info');
   try {
+    const exactToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
     const response = await fetch(`https://api.placid.app/api/rest/images`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      headers: { 'Authorization': exactToken, 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ template_uuid: uuid, layers: {} })
     });
-    const txt = await response.text();
-    log(`[DEBUG RESPONSE] Status ${response.status}: ${txt}`, 'info');
-    alert(`Handshake responsive (Code: ${response.status}). Canvas auto-fallback is active.`);
-  } catch (e) { log(`[DEBUG PLACID BLOCK] ${e.message}`, 'error'); alert("Blocked by CORS or missing data - Canvas fallback will apply automatically."); }
+    if(response.status === 200 || response.status === 201 || response.status === 422) {
+      log(`[DEBUG SUCCESS] Handshake complete. Status: ${response.status}`, 'success');
+      alert(`✓ Placid API is fully connected and ready!`);
+    } else {
+      const txt = await response.text();
+      log(`[DEBUG FAIL] Status ${response.status}: ${txt}`, 'error');
+    }
+  } catch (e) { log(`[DEBUG PLACID BLOCK] ${e.message}`, 'error'); alert("Blocked by network configuration."); }
 }
 
 async function generateLocalCanvasPin(title, url1, url2) {
@@ -480,25 +485,32 @@ async function generatePlacidComposite(title, imgUrl1, imgUrl2, website) {
     return await generateLocalCanvasPin(title, imgUrl1, imgUrl2);
   }
   try {
+    const exactToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
     const response = await fetch(`https://api.placid.app/api/rest/images`, {
       method: 'POST',
-      headers: { 'Authorization': `${token.startsWith('Bearer') ? token : 'Bearer ' + token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      headers: { 
+        'Authorization': exactToken, 
+        'Content-Type': 'application/json', 
+        'Accept': 'application/json' 
+      },
       body: JSON.stringify({ 
         template_uuid: uuid, 
-        create_now: true, 
         layers: { 
           "TITLE": { "text": title }, 
-          "SUBLINE": { "text": sublineText },
-          "IMG1": { "image": imgUrl1 }, 
-          "IMG2": { "image": imgUrl2 } 
+          "SUBLINE": { "text": sublineText.toUpperCase() },
+          "IMG1": { "image_url": imgUrl1 }, 
+          "IMG2": { "image_url": imgUrl2 } 
         } 
       })
     });
-    if (!response.ok) throw new Error(`Placid Return Status ${response.status}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Placid Return Status ${response.status}: ${errText}`);
+    }
     const json = await response.json();
     return json.image_url || json.url || imgUrl1;
   } catch (e) {
-    log(`  [Placid Auto Fallback] Placid API issue: ${e.message}. Executing local Canvas rendering node.`, 'success');
+    log(`  [Placid Auto Fallback] Placid API issue: ${e.message}. Executing local Canvas rendering node.`, 'warn');
     return await generateLocalCanvasPin(title, imgUrl1, imgUrl2);
   }
 }
@@ -543,7 +555,6 @@ Provide step by step ingredient lists, directions, and optimized headings. You m
       return JSON.parse(content);
     }
     
-    // Default Free Pollinations Text Node 
     const pResp = await fetch(`https://text.pollinations.ai/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
