@@ -159,7 +159,7 @@ th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);co
         </div>
         <div class="toggle-row">
           <button class="toggle on" id="toggle-img" onclick="this.classList.toggle('on')"></button>
-          <label>Combine Images using Placid Layout (With Canvas CORS Fallback)</label>
+          <label>Combine Images using Placid Layout (With Direct Link Fallback)</label>
         </div>
       </div>
     </div>
@@ -197,7 +197,7 @@ th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);co
   </div>
 
   <div id="panel-images" class="panel">
-    <div class="page-header"><div class="page-title">Placid & Canvas Composites Library</div></div>
+    <div class="page-header"><div class="page-title">Placid Composites Library</div></div>
     <div class="card" style="padding:14px;">
       <div id="img-grid-wrap" class="img-grid">
         <div style="color:var(--muted);text-align:center;padding:40px;grid-column:1/-1;">No imagery loaded.</div>
@@ -385,7 +385,7 @@ function handleFile(file){
       board: (r[2]||'').toString().trim(),
       website:(r[3]||'').toString().trim(),
     }));
-    document.getElementById('file-name-display').textContent=`✓ Loaded ${S.rows.length} rows`;
+    document.getElementById('file-name-display').textContent= `✓ Loaded ${S.rows.length} rows`;
     document.getElementById('stat-rows').textContent=S.rows.length;
     document.getElementById('start-date').value=new Date().toISOString().split('T')[0];
   };
@@ -467,38 +467,14 @@ async function testPlacidConnection() {
   }
 }
 
-async function generateLocalCanvasPin(title, url1, url2) {
-  return new Promise((resolve) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1000; canvas.height = 1500;
-    const ctx = canvas.getContext('2d');
-    let loaded = 0;
-    const img1 = new Image(); const img2 = new Image();
-    img1.crossOrigin = "anonymous"; img2.crossOrigin = "anonymous";
-    const assemble = () => {
-      ctx.drawImage(img1, 0, 0, 1000, 680);
-      ctx.drawImage(img2, 0, 820, 1000, 680);
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 680, 1000, 140);
-      ctx.fillStyle = '#17171f'; ctx.font = "bold 42px 'Georgia', serif";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(title, 500, 750);
-      resolve(canvas.toDataURL('image/jpeg', 0.9));
-    };
-    img1.onload = () => { loaded++; if(loaded === 2) assemble(); };
-    img2.onload = () => { loaded++; if(loaded === 2) assemble(); };
-    img1.onerror = img2.onerror = () => { resolve(url1); };
-    img1.src = url1; img2.src = url2;
-  });
-}
-
 async function generatePlacidComposite(title, imgUrl1, imgUrl2, website) {
   const token = (S.config.placidToken || '').trim();
   const uuid = (S.config.placidUuid || '').trim();
   const sublineText = website ? (website.includes('.') ? website : website + '.com') : 'simplecheapmom.com';
   
   if (!token || !uuid) {
-    log('  ⚠ Placid configuration missing. Running Canvas local compositing engine.', 'warn');
-    return await generateLocalCanvasPin(title, imgUrl1, imgUrl2);
+    log('  ⚠ Placid configuration missing. Using primary Pollinations link as direct fallback asset.', 'warn');
+    return imgUrl1;
   }
   try {
     const exactToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
@@ -526,8 +502,8 @@ async function generatePlacidComposite(title, imgUrl1, imgUrl2, website) {
     const json = await response.json();
     return json.image_url || json.url || imgUrl1;
   } catch (e) {
-    log(`  [Placid Auto Fallback] Placid API issue: ${e.message}. Executing local Canvas rendering node.`, 'warn');
-    return await generateLocalCanvasPin(title, imgUrl1, imgUrl2);
+    log(`  [Placid Network Fallback] API error: ${e.message}. Directly using Pollinations URL resource links.`, 'warn');
+    return imgUrl1;
   }
 }
 
