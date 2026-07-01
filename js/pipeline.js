@@ -1,97 +1,132 @@
 async function startGeneration() {
-  if (!S.rows.length) { showToast('Upload an Excel file first'); return; }
-  saveConfig();
-  const doWP = document.getElementById('toggle-wp').classList.contains('on');
-  const doImg = document.getElementById('toggle-img').classList.contains('on');
-  const subModel = document.getElementById('img-sub-model').value;
-  
-  const dates = Array.from({length: S.rows.length}, (_, i) => {
-    let d = new Date(); d.setHours(d.getHours() + i * 2);
-    return d.toISOString().replace('T', ' ').substring(0, 16);
-  });
+  if (S.rows.length === 0) {
+    alert("No rows loaded! Please import an Excel sheet first.");
+    return;
+  }
 
-  document.getElementById('btn-generate').disabled = true;
-  S.posts = [];
-  document.getElementById('img-grid-wrap').innerHTML = '';
-  document.getElementById('preview-tbody').innerHTML = '';
-  let pubCount = 0, imgCount = 0;
+  log(`🚀 Launching production pipeline for ${S.rows.length} structural entries...`, 'info');
+  let pubCount = 0;
 
   for (let i = 0; i < S.rows.length; i++) {
     const row = S.rows[i];
-    setProgress(Math.round(((i + 1) / S.rows.length) * 100), `Row ${i + 1}/${S.rows.length}`);
-    log(`Starting pipeline block: "${row.title}"`, 'info');
+    log(`--------------------------------------------------`, 'info');
+    log(`[Row ${i + 1}/${S.rows.length}] Processing topic: "${row.title}"`, 'info');
 
-    let finalPinUrl = '', articleUrl = '', wpStatus = 'skipped';
-    
-    const article = await generateArticle(row.title, row.website);
-    log('  ✓ Text layout copywriting generated successfully.', 'success');
+    let finalPinUrl = '';
+    let articleUrl = '';
+    let wpStatus = 'failed';
 
-    if (doImg) {
-      log('  Constructing photorealistic prompt structures via Pollinations...', 'info');
-      const prompt1 = getCustomImagePrompt(row.title, 1);
-      const img1 = getAIImageUrl(prompt1, subModel, 1);
-      
-      const prompt2 = getCustomImagePrompt(row.title, 2);
-      const img2 = getAIImageUrl(prompt2, subModel, 2);
-      
-      log('  Sending BOTH variant images to Placid Studio...', 'info');
+    try {
+      // 1. Text Copywriting Generation
+      const article = await generateArticle(row.title, row.website);
+      log(`  ✓ Recipe copy generated dynamically via AI.`, 'success');
+
+      // 2. Generate Dual Visual Prompts via Pollinations
+      const prompt1 = `High-res professional food photography of ${row.title}, luxury plating, cinematic lighting, macro close up --ar 2:3`;
+      const prompt2 = `Gourmet preparation shot of ingredients for ${row.title}, rustic studio lighting, editorial style --ar 2:3`;
+
+      const imgUrl1 = getAIImageUrl(prompt1, 'flux', 1);
+      const imgUrl2 = getAIImageUrl(prompt2, 'flux', 2);
+      log(`  Generated twin creative asset targets.`, 'info');
+
+      // 3. Connect to Placid Composite Canvas Engine
       try {
-        finalPinUrl = await generatePlacidComposite(row.title, img1, img2);
-        imgCount++;
-        log('  ✓ Placid composite image generated successfully.', 'success');
-      } catch (err) {
-        log(`  ❌ Placid creation failed: ${err.message}. Using Image 1 fallback rule.`, 'error');
-        finalPinUrl = img1; 
+        log('  Sending variant images to Placid Studio...', 'info');
+        finalPinUrl = await generatePlacidComposite(row.title, imgUrl1, imgUrl2);
+        log('  ✓ Placid high-resolution multi-layer pin generated!', 'success');
+      } catch (placidErr) {
+        log(`  ❌ Placid layout compilation failed: ${placidErr.message}. Defaulting to Image 1 route.`, 'warn');
+        finalPinUrl = imgUrl1;
       }
-      
-      const card = document.createElement('div');
-      card.className = 'img-card';
-      card.innerHTML = `<img src="${finalPinUrl}"><span class="img-status">Pin Verified</span>`;
-      document.getElementById('img-grid-wrap').appendChild(card);
-    }
 
-    if (doWP) {
-      const site = getSite(row.website);
-      if (site) {
-        let mediaId = null;
-        if (finalPinUrl) {
-          log('  Uploading Placid Final Pin to WordPress Media Library...', 'info');
-          const m = await uploadUrlToWP(finalPinUrl, row.title, site);
-          mediaId = m.id; 
-          if (mediaId) {
-            log('  ✓ Placid Pin attached as active Featured Image.', 'success');
+      // 4. Handle WordPress Publishing Pipeline
+      const doWP = document.getElementById('enable-wp').checked;
+      if (doWP) {
+        const site = getSite(row.website);
+        if (site) {
+          let mediaId = null;
+          let finalPinUrlHtml = '';
+
+          if (finalPinUrl) {
+            log('  Uploading Placid Final Pin to WordPress Media Library...', 'info');
+            const m = await uploadUrlToWP(finalPinUrl, row.title, site);
+            mediaId = m.id; 
+            if (mediaId) {
+              log('  ✓ Placid Pin attached as active Featured Image Thumbnail.', 'success');
+            }
+            
+            // Render beautiful HTML content frame for the top of your post layout
+            finalPinUrlHtml = `<div class="recipe-featured-image-wrapper" style="margin-bottom:30px; text-align:center;">
+              <img src="${finalPinUrl}" alt="${row.title}" class="wp-post-image recipe-main-img" style="width:100%; max-width:800px; height:auto; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08);" />
+            </div>`;
           }
-        }
-        const linkedArticle = { ...article, html: injectLinks(article.html) };
-        const wp = await publishPostWP(linkedArticle, mediaId, site);
-        if (wp.url) { 
-          articleUrl = wp.url; 
-          wpStatus = 'published'; 
-          pubCount++; 
-          log(`  ✓ Article Published: ${wp.url}`, 'success'); 
+          
+          // Inject the image HTML directly where the AI created the hook token
+          let contentWithImages = article.html;
+          if (contentWithImages.includes('[TOP_FEATURED_IMAGE_PLACEHOLDER]')) {
+            contentWithImages = contentWithImages.replace('[TOP_FEATURED_IMAGE_PLACEHOLDER]', finalPinUrlHtml);
+          } else {
+            contentWithImages = finalPinUrlHtml + contentWithImages;
+          }
+
+          const linkedArticle = { ...article, html: injectLinks(contentWithImages) };
+          const wp = await publishPostWP(linkedArticle, mediaId, site);
+          if (wp.url) { 
+            articleUrl = wp.url; 
+            wpStatus = 'published'; 
+            pubCount++; 
+            log(`  ✓ Luxury Article Published: ${wp.url}`, 'success'); 
+          }
+        } else {
+          log(`  ❌ Missing credentials configuration entry matching target profile: ${row.website}`, 'error');
         }
       }
+
+      // 5. Append to Local Workboard State
+      S.posts.push({
+        title: row.title,
+        imageUrl: finalPinUrl,
+        board: row.board,
+        description: article.description,
+        articleUrl: articleUrl,
+        date: new Date().toISOString().split('T')[0],
+        keywords: article.keywords
+      });
+
+    } catch (rowErr) {
+      log(`❌ Critical Pipeline Crash on Row ${i + 1}: ${rowErr.message}`, 'error');
     }
 
-    S.posts.push({ 
-      title: row.title, 
-      board: row.board, 
-      imageUrl: finalPinUrl, 
-      articleUrl, 
-      description: article.description, 
-      date: dates[i], 
-      keywords: article.keywords 
-    });
-
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${row.title}</td><td>${row.board}</td><td><a href="${finalPinUrl}" target="_blank">Placid Pin Link</a></td><td>${article.description || ''}</td><td>${wpStatus}</td>`;
-    document.getElementById('preview-tbody').appendChild(tr);
+    // Refresh UI Preview panels dynamically
+    updateUI();
   }
 
-  document.getElementById('stat-published').textContent = pubCount;
-  document.getElementById('stat-images').textContent = imgCount;
-  document.getElementById('btn-generate').disabled = false;
-  document.getElementById('btn-export').disabled = false;
-  document.getElementById('btn-export2').disabled = false;
-  setProgress(100, 'Loop completed.');
+  log(`==================================================`, 'info');
+  log(`🏁 Generation Cycle Complete! ${pubCount} posts deployed.`, 'success');
+  showToast(`Success! Generated ${pubCount} blog entries.`);
+}
+
+function injectLinks(html) {
+  // Pass-through handler for inter-linking rules if matching datasets exist
+  return html;
+}
+
+function updateUI() {
+  document.getElementById('stat-published').textContent = S.posts.length;
+  document.getElementById('stat-images').textContent = S.posts.filter(p => p.imageUrl).length;
+
+  let html = '';
+  S.posts.forEach((p, index) => {
+    html += `<tr>
+      <td>${index + 1}</td>
+      <td><strong>${p.title}</strong></td>
+      <td><span class="badge">${p.board}</span></td>
+      <td><a href="${p.imageUrl}" target="_blank">View Pin Image</a></td>
+      <td>${p.articleUrl ? `<a href="${p.articleUrl}" target="_blank" class="success-link">View Post Link</a>` : '<span style="color:var(--muted)">Skipped</span>'}</td>
+    </tr>`;
+  });
+  
+  if(html) {
+    document.getElementById('preview-tbody').innerHTML = html;
+  }
 }
