@@ -40,7 +40,10 @@ async function startGeneration() {
       }
 
       // 4. Handle WordPress Publishing Pipeline
-      const doWP = document.getElementById('enable-wp').checked;
+      // FIXED: Bulletproof layout element checker to prevent 'null' pointer exceptions
+      const wpElement = document.getElementById('enable-wp');
+      const doWP = wpElement ? wpElement.checked : true;
+
       if (doWP) {
         const site = getSite(row.website);
         if (site) {
