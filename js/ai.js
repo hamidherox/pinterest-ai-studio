@@ -5,13 +5,23 @@ async function generateArticle(title, website) {
 
   if (provider === 'template') return buildTemplate(title, website, lang);
 
-  const systemMsg = `Write a comprehensive deep recipe food blog article in ${lang} language for the website "${website}" about "${title}". 
-Provide step by step ingredient lists, directions, and optimized headings. You must reply strictly with a standard serialized JSON output object container containing 'html', 'description', 'keywords', and 'seoTitle' properties. Do not wrap inside codeblocks or markdown rules:
+  const systemMsg = `You are a world-class Michelin star chef and culinary writer contributing an elite article to "${website}" in ${lang} language. 
+Your single objective is to write the ultimate "Luxury Recipe" guide for making "${title}", engineered to eliminate all ambiguity in the cooking process.
+
+Follow these strict Reddit Recipe Architecture rules:
+1. TARGET SELECTION (Luxury Recipe Mode): You must include all possible premium ingredients, specialized pairings, and master-level techniques to craft a visually stunning, incredibly aromatic, and flawless version of "${title}".
+2. MULTI-MEASUREMENT INGREDIENTS (4 Servings): Avoid vague terms like "milk" or "fish". Specify exact animal source, fat percentages, and cuts. For every single ingredient, you MUST provide the quantity using THREE simultaneous measurement methods: Weight (Grams/Kilograms), Volume (Milliliters/Liters), and specific Household Units (e.g., standard level 240ml cups, level 15ml tablespoons, or 5ml teaspoons).
+3. EQUIPMENT PROFILE: Explicitly state the exact kitchen hardware, pan types (e.g., heavy-bottomed stainless steel, seasoned cast iron), and heat settings required before starting.
+4. CHRONOLOGICAL DIRECTIONS & PRECISE TIMERS: Write a clear, numbered list for steps. Every single step MUST contain a precise time duration (in minutes or seconds). If an item is added "gradually", define exactly how (e.g., "Pour the olive oil in a slow, steady stream over exactly 45 seconds while whisking constantly").
+5. SCIENCE TIPS & SUBSTITUTIONS: Include contextual "Chef's Notes" explaining the culinary science behind crucial steps (e.g., why a temperature matters) and provide 2-3 precise ingredient substitutions for dietary flexibility without ruining the balance.
+6. THEME STYLING HOOK: At the absolute beginning of your 'html' content string, you MUST place this exact image placeholder tag: [TOP_FEATURED_IMAGE_PLACEHOLDER]
+
+Return ONLY a valid, raw JSON object matching this exact schema. Do not include markdown codeblocks (such as \`\`\`json):
 {
-  "html": "<h2>Ingredients...</h2>",
-  "description": "Short engaging description.",
-  "keywords": "recipe, easy, cooking",
-  "seoTitle": "${title}"
+  "html": "<h1>Gourmet Guide to Perfect ${title}</h1><p>...</p><h2>Required Kitchen Equipment</h2>...<h2>Ultra-Precise Multi-Measurement Ingredients</h2>...<h2>Chronological Step-by-Step Instructions</h2>...",
+  "description": "An elite, completely unambiguous luxury masterclass recipe guide to preparing the perfect ${title}.",
+  "keywords": "${title} recipe, luxury cooking, gourmet guide, masterclass recipe",
+  "seoTitle": "The Perfect ${title} Recipe (Ultra-Precise Luxury Guide)"
 }`;
 
   try {
@@ -19,7 +29,11 @@ Provide step by step ingredient lists, directions, and optimized headings. You m
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apikey}` },
-        body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: systemMsg }] })
+        body: JSON.stringify({ 
+          model: 'gpt-4o-mini', 
+          messages: [{ role: 'system', content: systemMsg }],
+          temperature: 0.3 
+        })
       });
       const text = await res.json();
       let content = text.choices?.[0]?.message?.content || '';
@@ -36,7 +50,7 @@ Provide step by step ingredient lists, directions, and optimized headings. You m
     pText = cleanJsonString(pText);
     return JSON.parse(pText);
   } catch (err) {
-    log(`  ⚠ Custom AI format catch triggered. Loading adaptive localized layout matrix.`, 'warn');
+    log(`  ⚠ AI processing fallback triggered. Loading standard safety matrix.`, 'warn');
     return buildTemplate(title, website, lang);
   }
 }
@@ -56,33 +70,10 @@ function cleanJsonString(str) {
 }
 
 function buildTemplate(title, website, lang) {
-  if (lang === 'French') {
-    return {
-      html: `<h2>Préparation de ${title}</h2><p>Bienvenue sur ${website}. Voici notre recette exclusive étape par étape pour réussir votre ${title} à la perfection.</p>`,
-      description: `Découvrez la recette facile et rapide de ${title} sur ${website}.`,
-      keywords: `${title}, recette, cuisine`,
-      seoTitle: title
-    };
-  } else if (lang === 'Spanish') {
-    return {
-      html: `<h2>Preparación de ${title}</h2><p>Bienvenidos a ${website}. Aujourd'hui nous vous proposons une délicieuse recette de ${title}.</p>`,
-      description: `Prueba esta receta deliciosa de ${title} en ${website}.`,
-      keywords: `${title}, receta, cocinar`,
-      seoTitle: title
-    };
-  } else if (lang === 'English') {
-    return {
-      html: `<h2>How to make ${title}</h2><p>Welcome back to ${website}. Today we are going to showcase the ultimate step-by-step guide to preparing an amazing ${title}.</p>`,
-      description: `Learn how to cook the best ${title} recipe at ${website}.`,
-      keywords: `${title}, recipe, cooking`,
-      seoTitle: title
-    };
-  } else {
-    return {
-      html: `<h2>Zubereitung von ${title}</h2><p>Willkommen zurück auf ${website}. Heute präsentieren wir Ihnen ein fantastisches, einfaches Rezept für ${title}. Perfekt zubereitet, leicht verständlich und absolut köstlich.</p>`,
-      description: `Das exklusive, leckere Rezept für ${title} auf ${website} ausprobieren.`,
-      keywords: `${title}, Rezept, Kochen`,
-      seoTitle: title
-    };
-  }
+  return {
+    html: `[TOP_FEATURED_IMAGE_PLACEHOLDER]<h2>Luxury Preparation: ${title}</h2><p>Welcome to ${website}. This is our premium guide to crafting the perfect ${title}.</p>`,
+    description: `Learn how to make the perfect ${title} on ${website}.`,
+    keywords: `${title}, recipe, luxury`,
+    seoTitle: title
+  };
 }
