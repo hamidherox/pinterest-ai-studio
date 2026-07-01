@@ -22,7 +22,7 @@ async function startGeneration() {
       log(`  ✓ Recipe copy generated dynamically via AI.`, 'success');
 
       // 2. Generate Dual Visual Prompts via Pollinations
-      const prompt1 = `food photography, [$title]::1, tilt shift, branding composition, high detail, steakhouse, professional magazine ad.
+      const prompt1 = `food photography, ${row.title}::1, tilt shift, branding composition, high detail, steakhouse, professional magazine ad.
 
 To create this ultra-realistic and mouth-watering image, we recommend using a full-frame DSLR camera with a macro lens to capture the intricate details of the dish.
 
