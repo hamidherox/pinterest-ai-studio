@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>PinForge — Pinterest Autoblogging</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><link rel="stylesheet" href="./css/style.css">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PinForge — Pinterest Autoblogging</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
 <div class="shell">
@@ -27,7 +28,6 @@
 
 <main class="main">
 
-  <!-- GENERATOR PANEL -->
   <div id="panel-generator" class="panel active">
     <div class="page-header">
       <div class="page-title">Pinterest Hub</div>
@@ -71,8 +71,9 @@
         </div>
         <div class="form-group">
           <label>Selected Sub-Model Engine</label>
-          <select id="img-sub-model">
-            <!-- Dynamically Populated -->
+          <select id="img-sub-model" onchange="S.config.subModel = this.value; saveConfig();">
+            <option value="flux">Flux (Default - High Artistic Quality)</option>
+            <option value="flux-realism">Flux Realism (Photorealistic Plating)</option>
           </select>
         </div>
         <div class="form-group full">
@@ -82,11 +83,11 @@
       </div>
       <div style="margin-top:16px;">
         <div class="toggle-row">
-          <button class="toggle on" id="toggle-wp" onclick="this.classList.toggle('on')"></button>
+          <button class="toggle on" id="enable-wp" onclick="this.classList.toggle('on')"></button>
           <label>Auto-publish blog article to WordPress</label>
         </div>
         <div class="toggle-row">
-          <button class="toggle on" id="toggle-img" onclick="this.classList.toggle('on')"></button>
+          <button class="toggle on" id="enable-placid" onclick="this.classList.toggle('on')"></button>
           <label>Combine Images using Placid Layout (With Direct Link Fallback)</label>
         </div>
       </div>
@@ -97,7 +98,7 @@
       <div class="form-grid cols-1">
         <div class="form-group">
           <label>Choose AI Copywriting Provider</label>
-          <select id="ai-provider" onchange="saveConfig();">
+          <select id="ai-provider" onchange="S.config.provider = this.value; saveConfig();">
             <option value="pollinations-free" selected>Pollinations AI Cluster (100% Free - No Key)</option>
             <option value="openai">OpenAI GPT-4o-Mini (Uses Settings Key)</option>
             <option value="template">No AI — use smart template (100% free)</option>
@@ -124,7 +125,6 @@
     </div>
   </div>
 
-  <!-- IMAGES LIBRARY -->
   <div id="panel-images" class="panel">
     <div class="page-header"><div class="page-title">Placid Composites Library</div></div>
     <div class="card" style="padding:14px;">
@@ -134,7 +134,6 @@
     </div>
   </div>
 
-  <!-- PREVIEW PANEL -->
   <div id="panel-preview" class="panel">
     <div class="page-header"><div class="page-title">Export Preview Matrix</div></div>
     <div class="card" style="padding:0;">
@@ -154,7 +153,6 @@
     </div>
   </div>
 
-  <!-- SETTINGS PANEL -->
   <div id="panel-settings" class="panel">
     <div class="page-header"><div class="page-title">Configuration Settings</div></div>
 
@@ -163,29 +161,36 @@
       <div class="form-grid cols-2">
         <div class="form-group">
           <label>OpenAI Premium Key</label>
-          <input type="password" id="cfg-apikey" placeholder="sk-proj-..." oninput="saveConfig()"/>
+          <input type="password" id="cfg-apikey" placeholder="sk-proj-..." oninput="S.config.apikey = this.value; saveConfig()"/>
         </div>
         <div class="form-group">
           <label>Hugging Face Token (Optional)</label>
-          <input type="password" id="cfg-hf-token" placeholder="hf_xxxxxxxxxxxxxxxx" oninput="saveConfig()"/>
+          <input type="password" id="cfg-hf-token" placeholder="hf_xxxxxxxxxxxxxxxx" oninput="S.config.hfToken = this.value; saveConfig()"/>
         </div>
         <div class="form-group">
           <label>Placid Private API Token (placid.app Key)</label>
-          <input type="password" id="cfg-placid-token" placeholder="Bearer placid-..." oninput="saveConfig()"/>
+          <input type="password" id="cfg-placid-token" placeholder="Bearer placid-..." oninput="S.config.placidToken = this.value; saveConfig()"/>
         </div>
         <div class="form-group">
           <label>Placid Template UID</label>
-          <input type="text" id="cfg-placid-uuid" placeholder="e.g., vb9j5mr3d1pie" oninput="saveConfig()"/>
-        </div>
-        <div class="form-group">
-          <label>Target Website Title/Name (Placid Subline Sync)</label>
-          <input type="text" id="cfg-site-name" placeholder="e.g., simplecheapmom.com" oninput="saveConfig()"/>
+          <input type="text" id="cfg-placid-uuid" placeholder="e.g., vb9j5mr3d1pie" oninput="S.config.placidUuid = this.value; saveConfig()"/>
         </div>
         <div class="form-group full">
-          <label>Pollinations Image Generation Prompt Template</label>
-          <textarea id="cfg-prompt-tpl" rows="2" oninput="saveConfig()">food photography, [$title]::1, tilt shift, branding composition, high detail, luxury dinner table, professional magazine ad</textarea>
+          <label>Target Website Title/Name (Placid Subline Sync)</label>
+          <input type="text" id="cfg-site-name" placeholder="e.g., simplecheapmom.com" oninput="S.config.siteName = this.value; saveConfig()"/>
         </div>
-        <div class="form-group full" style="display: flex; flex-direction: row; justify-content: flex-end; gap: 10px;">
+        
+        <div class="form-group full">
+          <label>Primary Pin Prompt Template (Image 1)</label>
+          <textarea id="promptTemplate1" oninput="S.config.promptTemplate1 = this.value; saveConfig()">High-res professional food photography of {title}, luxury plating, cinematic lighting, macro close up --ar 2:3</textarea>
+          <small style="color:var(--muted); display:block; margin-top:2px;">Use token <code>{title}</code> for automatic row string swaps.</small>
+        </div>
+        <div class="form-group full">
+          <label>Secondary Composition Template (Image 2)</label>
+          <textarea id="promptTemplate2" oninput="S.config.promptTemplate2 = this.value; saveConfig()">Gourmet preparation shot of ingredients for {title}, rustic studio lighting, editorial style --ar 2:3</textarea>
+        </div>
+
+        <div class="form-group full" style="display: flex; flex-direction: row; justify-content: flex-end; gap: 10px; margin-top: 10px;">
           <button class="btn btn-outline" style="height:38px;" onclick="testAIConnection()">🔍 Test AI Connection</button>
           <button class="btn btn-outline" style="height:38px;" onclick="testPlacidConnection()">🔍 Test Placid Connection</button>
         </div>
@@ -195,8 +200,8 @@
     <div class="card">
       <div class="card-title">WordPress Target Nodes</div>
       <div class="form-group">
-        <label>Format: <code>website##[https://url.com](https://url.com)##email##application_password</code></label>
-        <textarea id="cfg-wp" rows="4" oninput="saveConfig();renderWPSites()"></textarea>
+        <label>Format: <code>website##https://url.com##email##application_password</code></label>
+        <textarea id="cfg-wp" rows="4" oninput="S.config.wpSites = this.value; saveConfig(); renderWPSites()"></textarea>
       </div>
       <div id="wp-sites-preview"></div>
     </div>
@@ -204,19 +209,18 @@
     <div class="card">
       <div class="card-title">Keyword Dynamic Injection Links</div>
       <div class="form-group">
-        <label>Format: <code>keyword##[https://link.com](https://link.com)</code></label>
-        <textarea id="cfg-keywords" rows="3" oninput="saveConfig()"></textarea>
+        <label>Format: <code>keyword##https://link.com</code></label>
+        <textarea id="cfg-keywords" rows="3" oninput="S.config.keywordsData = this.value; saveConfig()"></textarea>
       </div>
     </div>
 
-    <button class="btn btn-primary" onclick="saveConfig();showToast('Configuration settings saved!')">💾 Save Settings</button>
+    <button class="btn btn-primary" onclick="saveConfig();showToast('All system configurations saved!')">💾 Save Settings</button>
   </div>
 
 </main>
 </div>
 <div id="toast"></div>
 
-<!-- Modular Script Distribution Engine Links -->
 <script src="js/sidebar.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/logger.js"></script>
@@ -224,11 +228,8 @@
 <script src="js/ai.js"></script>
 <script src="js/pollinations.js"></script>
 <script src="js/wordpress.js"></script>
-
 <script src="js/placid.js"></script>
-
 <script src="js/pipeline.js"></script>
-
 <script src="js/app.js"></script>
 </body>
 </html>
