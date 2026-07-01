@@ -14,22 +14,15 @@ async function generatePlacidComposite(title, imgUrl1, imgUrl2) {
     "template_uuid": uuid,
     "create_now": true,
     "layers": {
-      "title": {
-        "text": title
-      },
-      "subline": {
-        "text": siteName
-      },
-      "img1": {
-        "image": imgUrl1
-      },
-      "img2": {
-        "image": imgUrl2
-      }
+      "title": { "text": title },
+      "subline": { "text": siteName },
+      "img1": { "image": imgUrl1 },
+      "img2": { "image": imgUrl2 }
     }
   };
 
-  const response = await fetch(`[https://api.placid.app/api/rest/images](https://api.placid.app/api/rest/images)`, {
+  // Trailing slash included to prevent 405 routing errors
+  const response = await fetch(`https://api.placid.app/api/rest/images/`, {
     method: 'POST',
     headers: { 
       'Authorization': exactToken, 
@@ -56,7 +49,7 @@ async function testPlacidConnection() {
   log(`[DEBUG] Testing Placid API Handshake...`, 'info');
   try {
     const exactToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-    const response = await fetch(`[https://api.placid.app/api/rest/images](https://api.placid.app/api/rest/images)`, {
+    const response = await fetch(`https://api.placid.app/api/rest/images/`, {
       method: 'POST',
       headers: { 'Authorization': exactToken, 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ 
@@ -80,13 +73,3 @@ async function testPlacidConnection() {
     alert("Connection verified! Core layout endpoints are fully operational."); 
   }
 }
-// Add the trailing slash right after "images" -> "images/"
-  const response = await fetch(`https://api.placid.app/api/rest/images/`, {
-    method: 'POST',
-    headers: { 
-      'Authorization': exactToken, 
-      'Content-Type': 'application/json', 
-      'Accept': 'application/json' 
-    },
-    body: JSON.stringify(payload)
-  });
