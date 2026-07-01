@@ -80,3 +80,13 @@ async function testPlacidConnection() {
     alert("Connection verified! Core layout endpoints are fully operational."); 
   }
 }
+// Add the trailing slash right after "images" -> "images/"
+  const response = await fetch(`https://api.placid.app/api/rest/images/`, {
+    method: 'POST',
+    headers: { 
+      'Authorization': exactToken, 
+      'Content-Type': 'application/json', 
+      'Accept': 'application/json' 
+    },
+    body: JSON.stringify(payload)
+  });
