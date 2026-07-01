@@ -21,41 +21,41 @@ async function startGeneration() {
       const article = await generateArticle(row.title, row.website);
       log(`  ✓ Recipe copy generated dynamically via AI.`, 'success');
 
-      // 2. Generate Dual Visual Prompts via Pollinations
-      const prompt1 = `food photography, ${row.title}::1, tilt shift, branding composition, high detail, steakhouse, professional magazine ad.
+      // 2. Generate Dual Visual Prompts via Settings Configuration Matrix
+      const template1 = S.config.promptTemplate1 || "food photography, {title}::1, tilt shift, branding composition, high detail, luxury dinner table, professional magazine ad";
+      const template2 = S.config.promptTemplate2 || "Gourmet preparation shot of ingredients for {title}, rustic studio lighting, editorial style --ar 2:3";
 
-To create this ultra-realistic and mouth-watering image, we recommend using a full-frame DSLR camera with a macro lens to capture the intricate details of the dish.
+      // Dynamically clean structural string replacements
+      const prompt1 = template1.replace(/{title}/g, row.title).replace(/\[\$title\]/g, row.title);
+      const prompt2 = template2.replace(/{title}/g, row.title).replace(/\[\$title\]/g, row.title);
 
-For the best results, set the camera to manual mode and adjust the following settings:
+      const selectedModel = S.config.subModel || 'flux'; 
 
-ISO: 100-200 to minimize noise and maintain image quality
-Aperture: f/2.8
-Shutter Speed: 1/160
-White Balance: Daylight
-
-Lighting is key in food photography. Use natural light if possible. If shooting indoors, use a softbox or diffuser.
-
---ar 3:2 --v 4`;
-      const prompt2 = `Gourmet preparation shot of ingredients for ${row.title}, rustic studio lighting, editorial style --ar 2:3`;
-
-      const imgUrl1 = getAIImageUrl(prompt1, 'flux', 1);
-      const imgUrl2 = getAIImageUrl(prompt2, 'flux', 2);
-      log(`  Generated twin creative asset targets.`, 'info');
+      const imgUrl1 = getAIImageUrl(prompt1, selectedModel, 1);
+      const imgUrl2 = getAIImageUrl(prompt2, selectedModel, 2);
+      log(`  Generated twin creative asset targets using model: ${selectedModel}`, 'info');
 
       // 3. Connect to Placid Composite Canvas Engine
-      try {
-        log('  Sending variant images to Placid Studio...', 'info');
-        finalPinUrl = await generatePlacidComposite(row.title, imgUrl1, imgUrl2);
-        log('  ✓ Placid high-resolution multi-layer pin generated!', 'success');
-      } catch (placidErr) {
-        log(`  ❌ Placid layout compilation failed: ${placidErr.message}. Defaulting to Image 1 route.`, 'warn');
+      const placidElement = document.getElementById('enable-placid');
+      const usePlacid = placidElement ? placidElement.classList.contains('on') : true;
+
+      if (usePlacid) {
+        try {
+          log('  Sending variant images to Placid Studio...', 'info');
+          finalPinUrl = await generatePlacidComposite(row.title, imgUrl1, imgUrl2);
+          log('  ✓ Placid high-resolution multi-layer pin generated!', 'success');
+        } catch (placidErr) {
+          log(`  ❌ Placid layout compilation failed: ${placidErr.message}. Defaulting to Image 1 route.`, 'warn');
+          finalPinUrl = imgUrl1;
+        }
+      } else {
+        log('  Bypassing Placid layout composite. Routing raw primary image track.', 'info');
         finalPinUrl = imgUrl1;
       }
 
       // 4. Handle WordPress Publishing Pipeline
-      // FIXED: Bulletproof layout element checker to prevent 'null' pointer exceptions
       const wpElement = document.getElementById('enable-wp');
-      const doWP = wpElement ? wpElement.checked : true;
+      const doWP = wpElement ? wpElement.classList.contains('on') : true;
 
       if (doWP) {
         const site = getSite(row.website);
@@ -66,7 +66,7 @@ Lighting is key in food photography. Use natural light if possible. If shooting 
           if (finalPinUrl) {
             log('  Uploading Placid Final Pin to WordPress Media Library...', 'info');
             const m = await uploadUrlToWP(finalPinUrl, row.title, site);
-            mediaId = m.id; 
+            mediaId = m ? m.id : null; 
             if (mediaId) {
               log('  ✓ Placid Pin attached as active Featured Image Thumbnail.', 'success');
             }
@@ -78,7 +78,7 @@ Lighting is key in food photography. Use natural light if possible. If shooting 
           }
           
           // Inject the image HTML directly where the AI created the hook token
-          let contentWithImages = article.html;
+          let contentWithImages = article.html || '';
           if (contentWithImages.includes('[TOP_FEATURED_IMAGE_PLACEHOLDER]')) {
             contentWithImages = contentWithImages.replace('[TOP_FEATURED_IMAGE_PLACEHOLDER]', finalPinUrlHtml);
           } else {
@@ -87,7 +87,7 @@ Lighting is key in food photography. Use natural light if possible. If shooting 
 
           const linkedArticle = { ...article, html: injectLinks(contentWithImages) };
           const wp = await publishPostWP(linkedArticle, mediaId, site);
-          if (wp.url) { 
+          if (wp && wp.url) { 
             articleUrl = wp.url; 
             wpStatus = 'published'; 
             pubCount++; 
@@ -102,11 +102,11 @@ Lighting is key in food photography. Use natural light if possible. If shooting 
       S.posts.push({
         title: row.title,
         imageUrl: finalPinUrl,
-        board: row.board,
-        description: article.description,
+        board: row.board || 'Default',
+        description: article.description || '',
         articleUrl: articleUrl,
         date: new Date().toISOString().split('T')[0],
-        keywords: article.keywords
+        keywords: article.keywords || ''
       });
 
     } catch (rowErr) {
@@ -119,7 +119,7 @@ Lighting is key in food photography. Use natural light if possible. If shooting 
 
   log(`==================================================`, 'info');
   log(`🏁 Generation Cycle Complete! ${pubCount} posts deployed.`, 'success');
-  showToast(`Success! Generated ${pubCount} blog entries.`);
+  if (typeof showToast === 'function') showToast(`Success! Generated ${pubCount} blog entries.`);
 }
 
 function injectLinks(html) {
@@ -128,8 +128,10 @@ function injectLinks(html) {
 }
 
 function updateUI() {
-  document.getElementById('stat-published').textContent = S.posts.length;
-  document.getElementById('stat-images').textContent = S.posts.filter(p => p.imageUrl).length;
+  const pubEl = document.getElementById('stat-published');
+  const imgEl = document.getElementById('stat-images');
+  if (pubEl) pubEl.textContent = S.posts.length;
+  if (imgEl) imgEl.textContent = S.posts.filter(p => p.imageUrl).length;
 
   let html = '';
   S.posts.forEach((p, index) => {
@@ -142,7 +144,8 @@ function updateUI() {
     </tr>`;
   });
   
-  if(html) {
-    document.getElementById('preview-tbody').innerHTML = html;
+  const tbody = document.getElementById('preview-tbody');
+  if (tbody && html) {
+    tbody.innerHTML = html;
   }
 }
