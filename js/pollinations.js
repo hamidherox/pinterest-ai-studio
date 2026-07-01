@@ -10,7 +10,8 @@ function getCustomImagePrompt(recipeTitle, variantIndex) {
 
 function getAIImageUrl(prompt, subModel, variantIndex) {
   const seed = variantIndex === 1 ? 1111 : 2222;
-  return `[https://image.pollinations.ai/prompt/$](https://image.pollinations.ai/prompt/$){encodeURIComponent(prompt)}?width=800&height=1200&model=${subModel}&seed=${seed}&nologo=true`;
+  // Ensure strict template literal configuration execution blocks
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=1200&model=${subModel}&seed=${seed}&nologo=true`;
 }
 
 async function testAIConnection() {
