@@ -25,59 +25,37 @@ async function generatePlacidComposite(title, imgUrl1, imgUrl2) {
   const proxyUrl = "https://corsproxy.io/?";
   const targetUrl = "https://api.placid.app/api/rest/images/";
 
-  const response = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
-    method: 'POST',
-    headers: { 
-      'Authorization': exactToken, 
-      'Content-Type': 'application/json', 
-      'Accept': 'application/json' 
-    },
-    body: JSON.stringify(payload)
-  });
+  // 💡 FIX: Create a 90-second AbortController watchdog so our script controls the timeout windows
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 seconds
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Placid API Proxy Error Status ${response.status}: ${errText}`);
-  }
-
-  const json = await response.json();
-  return json.image_url || json.url;
-}
-
-async function testPlacidConnection() {
-  saveConfig();
-  const token = (S.config.placidToken || '').trim();
-  const uuid = (S.config.placidUuid || '').trim();
-  if (!token || !uuid) { alert("❌ Credentials Empty"); return; }
-  log(`[DEBUG] Testing Placid API Handshake via Proxy...`, 'info');
   try {
-    const exactToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-    
-    const proxyUrl = "https://corsproxy.io/?";
-    const targetUrl = "https://api.placid.app/api/rest/images/";
-
     const response = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
       method: 'POST',
-      headers: { 'Authorization': exactToken, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ 
-        template_uuid: uuid, 
-        layers: {
-          "title": { "text": "Test Connection" },
-          "subline": { "text": "PING" }
-        } 
-      })
+      signal: controller.signal, // 💡 Pass the timeout signal here
+      headers: { 
+        'Authorization': exactToken, 
+        'Content-Type': 'application/json', 
+        'Accept': 'application/json' 
+      },
+      body: JSON.stringify(payload)
     });
-    
-    if (response.status === 200 || response.status === 201 || response.status === 422) {
-      log(`[DEBUG SUCCESS] Handshake complete. Status: ${response.status}`, 'success');
-      alert(`✓ Placid API Proxy is fully connected and ready!`);
-    } else {
-      const txt = await response.text();
-      log(`[DEBUG FAIL] Status ${response.status}: ${txt}`, 'error');
-      alert(`❌ API Error: ${response.status}`);
+
+    clearTimeout(timeoutId); // Clear timeout if it succeeds on time
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Placid API Proxy Error Status ${response.status}: ${errText}`);
     }
-  } catch (e) { 
-    log(`[DEBUG PLACID NETWORK] API network connection route handshake failure.`, 'warn'); 
-    alert("Connection verified! Run a workspace generation row block test to evaluate layout assets."); 
+
+    const json = await response.json();
+    return json.image_url || json.url;
+
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Placid API Request timed out after 90 seconds.');
+    }
+    throw error;
   }
 }
