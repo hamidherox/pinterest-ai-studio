@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PinForge — Pinterest Autoblogging</title>
+<link href="[https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap](https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap)" rel="stylesheet"/>
+<script src="[https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js](https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js)"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="shell">
+
+<header class="topbar">
+  <div class="topbar-logo">Pin<span>Forge</span></div>
+  <span class="badge badge-red">Auto</span>
+  <span class="badge badge-green">v3.1 Production Engine</span>
+</header>
+
+<nav class="sidebar">
+  <div class="nav-section">Workspace</div>
+  <div class="nav-item active" onclick="showPanel('generator',this)"><span class="nav-icon">⚡</span> Generator</div>
+  <div class="nav-item" onclick="showPanel('images',this)"><span class="nav-icon">🖼️</span> Images</div>
+  <div class="nav-item" onclick="showPanel('preview',this)"><span class="nav-icon">📋</span> Export Preview</div>
+  <div class="nav-section">Config</div>
+  <div class="nav-item" onclick="showPanel('settings',this)"><span class="nav-icon">⚙️</span> Settings</div>
+</nav>
+
+<main class="main">
+
+  <!-- GENERATOR PANEL -->
+  <div id="panel-generator" class="panel active">
+    <div class="page-header">
+      <div class="page-title">Pinterest Hub</div>
+      <div class="page-subtitle">Auto-generate luxury layout composites & articles via Placid 2.0 API Node.</div>
+    </div>
+    
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-value" id="stat-rows">0</div><div class="stat-label">Rows loaded</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-published">0</div><div class="stat-label">Posts published</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-images">0</div><div class="stat-label">Images ready</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">① Upload your Excel</div>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv"/>
+        <div class="dropzone-icon">📂</div>
+        <div class="dropzone-text">Drop your Excel file here or click to browse</div>
+        <div class="file-name" id="file-name-display"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">② Engine & AI Image Options</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Content language</label>
+          <div class="lang-select-row" id="lang-pills">
+            <button class="lang-pill active" data-lang="German" onclick="setLanguage('German', this)">🇩🇪 German</button>
+            <button class="lang-pill" data-lang="English" onclick="setLanguage('English', this)">🇬🇧 English</button>
+            <button class="lang-pill" data-lang="French" onclick="setLanguage('French', this)">🇫🇷 French</button>
+            <button class="lang-pill" data-lang="Spanish" onclick="setLanguage('Spanish', this)">🇪🇸 Spanish</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>AI Image Model Provider</label>
+          <select id="img-engine-source" onchange="toggleEngineModelDropdown()">
+            <option value="pollinations">Pollinations.ai Free Cluster</option>
+            <option value="huggingface">Hugging Face API inference Endpoint</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Selected Sub-Model Engine</label>
+          <select id="img-sub-model">
+            <!-- Dynamically Populated -->
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Start date</label>
+          <input type="date" id="start-date" style="max-width:50%;"/>
+        </div>
+      </div>
+      <div style="margin-top:16px;">
+        <div class="toggle-row">
+          <button class="toggle on" id="toggle-wp" onclick="this.classList.toggle('on')"></button>
+          <label>Auto-publish blog article to WordPress</label>
+        </div>
+        <div class="toggle-row">
+          <button class="toggle on" id="toggle-img" onclick="this.classList.toggle('on')"></button>
+          <label>Combine Images using Placid Layout (With Direct Link Fallback)</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">③ Article Copywriting Engine Selector</div>
+      <div class="form-grid cols-1">
+        <div class="form-group">
+          <label>Choose AI Copywriting Provider</label>
+          <select id="ai-provider" onchange="saveConfig();">
+            <option value="pollinations-free" selected>Pollinations AI Cluster (100% Free - No Key)</option>
+            <option value="openai">OpenAI GPT-4o-Mini (Uses Settings Key)</option>
+            <option value="template">No AI — use smart template (100% free)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">④ Process Generation Loop</div>
+      <div id="progress-wrap" style="display:none;margin-bottom:14px;">
+        <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+        <div class="progress-label" id="progress-label">Awaiting activation hook…</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-generate" onclick="startGeneration()">⚡ Start Generation</button>
+        <button class="btn btn-success" id="btn-export" onclick="exportPinterest()" disabled>⬇️ Export Pinterest CSV</button>
+        <button class="btn btn-secondary" onclick="showPanel('preview',null)">👁️ Preview Matrix</button>
+        <button class="btn btn-outline" onclick="clearAll()">🗑️ Clear Workspace</button>
+      </div>
+      <div class="log-box" id="log-box">
+        <div class="log-line info">System running. Initialization checked. Open Settings tab to configure API Keys.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMAGES LIBRARY -->
+  <div id="panel-images" class="panel">
+    <div class="page-header"><div class="page-title">Placid Composites Library</div></div>
+    <div class="card" style="padding:14px;">
+      <div id="img-grid-wrap" class="img-grid">
+        <div style="color:var(--muted);text-align:center;padding:40px;grid-column:1/-1;">No imagery loaded.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREVIEW PANEL -->
+  <div id="panel-preview" class="panel">
+    <div class="page-header"><div class="page-title">Export Preview Matrix</div></div>
+    <div class="card" style="padding:0;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Title</th><th>Board</th><th>Image Link</th><th>Description</th><th>Status</th></tr>
+          </thead>
+          <tbody id="preview-tbody">
+            <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px;">No data processed yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn btn-success" id="btn-export2" onclick="exportPinterest()" disabled>⬇️ Export Pinterest CSV</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS PANEL -->
+  <div id="panel-settings" class="panel">
+    <div class="page-header"><div class="page-title">Configuration Settings</div></div>
+
+    <div class="card">
+      <div class="card-title">🛡️ Central API Key Gateways & Debug Tools</div>
+      <div class="form-grid cols-2">
+        <div class="form-group">
+          <label>OpenAI Premium Key</label>
+          <input type="password" id="cfg-apikey" placeholder="sk-proj-..." oninput="saveConfig()"/>
+        </div>
+        <div class="form-group">
+          <label>Hugging Face Token (Optional)</label>
+          <input type="password" id="cfg-hf-token" placeholder="hf_xxxxxxxxxxxxxxxx" oninput="saveConfig()"/>
+        </div>
+        <div class="form-group">
+          <label>Placid Private API Token (placid.app Key)</label>
+          <input type="password" id="cfg-placid-token" placeholder="Bearer placid-..." oninput="saveConfig()"/>
+        </div>
+        <div class="form-group">
+          <label>Placid Template UID</label>
+          <input type="text" id="cfg-placid-uuid" placeholder="e.g., vb9j5mr3d1pie" oninput="saveConfig()"/>
+        </div>
+        <div class="form-group">
+          <label>Target Website Title/Name (Placid Subline Sync)</label>
+          <input type="text" id="cfg-site-name" placeholder="e.g., simplecheapmom.com" oninput="saveConfig()"/>
+        </div>
+        <div class="form-group full">
+          <label>Pollinations Image Generation Prompt Template</label>
+          <textarea id="cfg-prompt-tpl" rows="2" oninput="saveConfig()">food photography, [$title]::1, tilt shift, branding composition, high detail, luxury dinner table, professional magazine ad</textarea>
+        </div>
+        <div class="form-group full" style="display: flex; flex-direction: row; justify-content: flex-end; gap: 10px;">
+          <button class="btn btn-outline" style="height:38px;" onclick="testAIConnection()">🔍 Test AI Connection</button>
+          <button class="btn btn-outline" style="height:38px;" onclick="testPlacidConnection()">🔍 Test Placid Connection</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">WordPress Target Nodes</div>
+      <div class="form-group">
+        <label>Format: <code>website##[https://url.com](https://url.com)##email##application_password</code></label>
+        <textarea id="cfg-wp" rows="4" oninput="saveConfig();renderWPSites()"></textarea>
+      </div>
+      <div id="wp-sites-preview"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Keyword Dynamic Injection Links</div>
+      <div class="form-group">
+        <label>Format: <code>keyword##[https://link.com](https://link.com)</code></label>
+        <textarea id="cfg-keywords" rows="3" oninput="saveConfig()"></textarea>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="saveConfig();showToast('Configuration settings saved!')">💾 Save Settings</button>
+  </div>
+
+</main>
+</div>
+<div id="toast"></div>
+
+<!-- Modular Script Distribution Engine Links -->
+<script src="js/sidebar.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/logger.js"></script>
+<script src="js/excel.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/pollinations.js"></script>
+<script src="js/placid.js"></script>
+<script src="js/wordpress.js"></script>
+<script src="js/pipeline.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
