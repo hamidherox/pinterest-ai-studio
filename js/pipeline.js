@@ -22,7 +22,20 @@ async function startGeneration() {
       log(`  ✓ Recipe copy generated dynamically via AI.`, 'success');
 
       // 2. Generate Dual Visual Prompts via Pollinations
-      const prompt1 = `High-res professional food photography of ${row.title}, luxury plating, cinematic lighting, macro close up --ar 2:3`;
+      const prompt1 = `food photography, [$title]::1, tilt shift, branding composition, high detail, steakhouse, professional magazine ad.
+
+To create this ultra-realistic and mouth-watering image, we recommend using a full-frame DSLR camera with a macro lens to capture the intricate details of the dish.
+
+For the best results, set the camera to manual mode and adjust the following settings:
+
+ISO: 100-200 to minimize noise and maintain image quality
+Aperture: f/2.8
+Shutter Speed: 1/160
+White Balance: Daylight
+
+Lighting is key in food photography. Use natural light if possible. If shooting indoors, use a softbox or diffuser.
+
+--ar 3:2 --v 4`;
       const prompt2 = `Gourmet preparation shot of ingredients for ${row.title}, rustic studio lighting, editorial style --ar 2:3`;
 
       const imgUrl1 = getAIImageUrl(prompt1, 'flux', 1);
